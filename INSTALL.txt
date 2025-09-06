@@ -1,0 +1,55 @@
+Liquid Glass Demo - Installation Guide
+======================================
+
+Step 1: Install Dependencies
+----------------------------
+
+Option A - PowerShell (Recommended):
+1. Right-click Start button -> Windows PowerShell (Admin)
+2. Navigate to project folder: cd "C:\Users\lbd111\LiquidGlassDemo01"
+3. Run: powershell -ExecutionPolicy Bypass -File install.ps1
+
+Option B - Simple Batch:
+1. Double-click install_simple.bat
+
+Option C - Manual:
+1. Install Git: https://git-scm.com/download/win
+2. Open Command Prompt as Administrator
+3. Run these commands:
+   git clone https://github.com/Microsoft/vcpkg.git
+   cd vcpkg
+   bootstrap-vcpkg.bat
+   vcpkg install glfw3:x64-windows
+   vcpkg install glew:x64-windows
+   vcpkg install glm:x64-windows
+   vcpkg integrate install
+   cd ..
+
+Step 2: Build and Run
+---------------------
+1. Double-click LiquidGlassDemo.sln
+2. Select Release x64 configuration
+3. Press F7 to build
+4. Press F5 to run
+
+Troubleshooting
+---------------
+- If build fails, check MANUAL_INSTALL.md
+- If DLL missing, copy DLL files to executable folder
+- If OpenGL error, update graphics drivers
+- Run verify_setup.bat to check environment
+
+System Requirements
+-------------------
+- Windows 10/11 64-bit
+- Visual Studio 2022 or later
+- OpenGL 3.3+ compatible graphics card
+- Git for Windows
+
+Controls
+--------
+- WASD: Move camera
+- Mouse: Look around
+- Scroll: Zoom
+- Up/Down arrows: Adjust distortion
+- ESC: Exit
