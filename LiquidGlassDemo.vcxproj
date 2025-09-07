@@ -88,23 +88,33 @@
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\LiquidGlass.cpp" />
+    <ClCompile Include="src\BackgroundCapture.cpp" />
+    <ClCompile Include="src\SDFGenerator.cpp" />
     <ClCompile Include="src\Shader.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\TextureLoader.cpp" />
     <ClCompile Include="src\stb_image.cpp" />
-    <ClCompile Include="src\BackgroundCapture.cpp" />
+    <ClCompile Include="src\BackgroundRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\LiquidGlass.h" />
+    <ClInclude Include="include\BackgroundCapture.h" />
+    <ClInclude Include="include\SDFGenerator.h" />
     <ClInclude Include="include\Shader.h" />
     <ClInclude Include="include\Camera.h" />
     <ClInclude Include="include\TextureLoader.h" />
     <ClInclude Include="include\stb_image.h" />
-    <ClInclude Include="include\BackgroundCapture.h" />
+    <ClInclude Include="include\BackgroundRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\liquid_glass.vert" />
     <None Include="shaders\liquid_glass.frag" />
+    <None Include="shaders\sdf_generator.vert">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\sdf_generator.frag">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

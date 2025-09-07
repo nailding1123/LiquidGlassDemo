@@ -1,133 +1,86 @@
 #version 330 core
-
-in vec2 TexCoord;
 out vec4 FragColor;
 
-// 背景纹理
+in vec2 TexCoord;
+in vec3 WorldPos;
+
 uniform sampler2D backgroundTexture;
-// 时间
-uniform float time;
-// 扭曲强度
-uniform float distortion;
-uniform vec2 resolution;
+uniform sampler2D sdfTexture;
 
-// 玻璃物理参数
-uniform float refractiveIndex = 1.5;  // 玻璃的折射率
-uniform float edgeBrightness = 2.0;     // 边缘亮度
-uniform float fresnelPower = 3.0;       // 菲涅尔指数
-uniform float thickness = 0.1;          // 玻璃厚度
+uniform float ref_height = 20.0;
+uniform float ref_length = 30.0;
+uniform float ref_border_width = 5.0;
+uniform float ref_exposure = 1.0;
+uniform float scale = 1.0;
 
-// 计算球体遮罩和法线
-vec4 getSphereData(vec2 uv) {
-    vec2 center = vec2(0.5, 0.5);
-    float radius = 0.4;
-    float dist = distance(uv, center);
+vec4 getColorWithOffset(vec2 coord, vec2 offset) {
+    vec2 screenSize = textureSize(backgroundTexture, 0);
+    // 修正坐标映射：确保与背景捕获区域的屏幕坐标一致
+    vec2 normalizedCoord = (coord + offset) / screenSize;
+    normalizedCoord = clamp(normalizedCoord, 0.0, 1.0);
     
-    // 计算球体遮罩
-    float mask = 1.0 - smoothstep(radius - 0.02, radius + 0.02, dist);
-    
-    // 计算球面法线
-    vec3 normal = vec3(0.0);
-    if (dist < radius) {
-        float z = sqrt(radius * radius - dist * dist);
-        normal = normalize(vec3(uv - center, z));
-    }
-    
-    return vec4(normal, mask);
+    vec4 color = texture(backgroundTexture, normalizedCoord);
+    vec3 rgb = color.rgb * ref_exposure;
+    return vec4(rgb, color.a);
 }
 
-// 计算透镜扭曲效果
-vec2 calculateLensDistortion(vec2 uv, vec3 normal, vec3 viewDir) {
-    // 基于物理的折射计算
-    vec3 refractedDir = refract(viewDir, normal, 1.0 / refractiveIndex);
-    
-    // 将折射方向转换为UV偏移
-    vec2 distortionOffset = refractedDir.xy * distortion * 0.1;
-    
-    // 添加液态表面扭曲
-    float liquidWave = sin(uv.x * 8.0 + uv.y * 6.0) * 0.005;
-    liquidWave += sin(uv.x * 12.0 - uv.y * 4.0) * 0.003;
-    
-    return uv + distortionOffset + liquidWave * distortion;
+float linear_map(float x, float y, float a, float b, float tsetnumber) {
+    float ratio = (tsetnumber - x) / (y - x);
+    return a + ratio * (b - a);
 }
 
-// 计算边缘散射效果
-vec3 calculateEdgeScattering(vec2 uv, vec4 sphereData) {
-    vec3 normal = sphereData.xyz;
-    float mask = sphereData.w;
-    vec2 center = vec2(0.5, 0.5);
-    float dist = distance(uv, center);
-    float radius = 0.4;
-    
-    // 计算边缘距离
-    float edgeDist = abs(dist - radius) / thickness;
-    
-    // 菲涅尔边缘高亮
-    vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));
-    float fresnel = pow(1.0 - abs(dot(normal, viewDir)), fresnelPower);
-    
-    // 边缘散射光
-    float edgeGlow = exp(-edgeDist * edgeDist * 10.0);
-    vec3 edgeColor = vec3(0.8, 0.9, 1.0) * edgeGlow * edgeBrightness;
-    
-    // 厚度相关的透明度
-    float thicknessAlpha = 1.0 - (dist / radius) * thickness;
-    
-    return edgeColor * fresnel * mask;
+vec4 decodeSDFData(vec4 sdfData) {
+    float distance = sdfData.r;
+    // 修正法线解码：确保方向正确
+    vec2 normal = (sdfData.gb - 0.5) * 2.0;
+    return vec4(distance, normal, sdfData.a);
 }
 
-// 计算玻璃透明度
-float calculateGlassAlpha(vec2 uv, vec4 sphereData) {
-    vec3 normal = sphereData.xyz;
-    float mask = sphereData.w;
-    
-    // 基于视角的透明度
-    vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));
-    float fresnel = pow(1.0 - abs(dot(normal, viewDir)), 2.0);
-    
-    // 边缘更透明
-    vec2 center = vec2(0.5, 0.5);
-    float dist = distance(uv, center);
-    float radius = 0.4;
-    float edgeFade = smoothstep(radius, radius - 0.1, dist);
-    
-    return mix(0.9, 0.3, fresnel * edgeFade) * mask;
+float smoothstep(float edge0, float edge1, float x) {
+    float t = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
 }
 
 void main() {
-    vec2 uv = TexCoord;
+    vec2 screenSize = textureSize(backgroundTexture, 0);
+    vec2 screenCoord = gl_FragCoord.xy;
     
-    // 获取球体数据（法线和遮罩）
-    vec4 sphereData = getSphereData(uv);
-    vec3 normal = sphereData.xyz;
-    float mask = sphereData.w;
+    // 确保SDF纹理采样使用正确的纹理坐标
+    vec4 sdfData = texture(sdfTexture, TexCoord);
+    vec4 decoded = decodeSDFData(sdfData);
     
-    if (mask < 0.01) {
-        // 完全透明区域显示原始背景
-        FragColor = texture(backgroundTexture, uv);
+    float distance = decoded.r;
+    vec2 normal = decoded.gb;
+    
+    // 修复：只有当距离小于阈值时才应用效果
+    if (distance >= 0.99999) {
+        FragColor = texture(backgroundTexture, TexCoord);
         return;
     }
     
-    // 计算视角方向
-    vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));
+    float dis = (1.0 - distance) * 50.0 * scale;
+    float r_height = ref_height;
+    float r_length = ref_length;
     
-    // 计算透镜扭曲的UV坐标
-    vec2 distortedUV = calculateLensDistortion(uv, normal, viewDir);
-    
-    // 采样扭曲后的背景
-    vec4 backgroundColor = texture(backgroundTexture, distortedUV);
-    
-    // 计算边缘散射
-    vec3 edgeScattering = calculateEdgeScattering(uv, sphereData);
-    
-    // 计算玻璃透明度
-    float glassAlpha = calculateGlassAlpha(uv, sphereData);
-    
-    // 玻璃基色（淡蓝色调）
-    vec3 glassTint = vec3(0.95, 0.98, 1.0);
-    
-    // 最终颜色合成
-    vec3 finalColor = backgroundColor.rgb * glassTint + edgeScattering;
-    
-    FragColor = vec4(finalColor, glassAlpha);
+    if (dis < r_height) {
+        float offsetVal = linear_map(r_height, 0.0, r_height, r_height - r_length, dis);
+        float offset = dis - offsetVal;
+        
+        vec2 offset_normal = normal * offset;
+        vec4 result = getColorWithOffset(screenCoord, offset_normal);
+        
+        if (dis <= ref_border_width) {
+            float edgeRatio = 1.0 - (dis / ref_border_width);
+            float smoothRatio = smoothstep(0.0, 1.0, edgeRatio);
+            
+            float angleFactor = abs(normal.x * normal.y);
+            float highlight = smoothRatio * (0.3 + angleFactor * 0.7);
+            
+            result = result * (1.0 + highlight * 0.6);
+        }
+        
+        FragColor = result;
+    } else {
+        FragColor = getColorWithOffset(screenCoord, vec2(0.0));
+    }
 }

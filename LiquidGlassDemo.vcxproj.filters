@@ -30,6 +30,18 @@
     <ClCompile Include="src\TextureLoader.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\BackgroundCapture.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\SDFGenerator.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\stb_image.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\BackgroundRenderer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\LiquidGlass.h">
@@ -47,6 +59,15 @@
     <ClInclude Include="include\stb_image.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="include\BackgroundCapture.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\SDFGenerator.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\BackgroundRenderer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\liquid_glass.vert">
@@ -55,7 +76,10 @@
     <None Include="shaders\liquid_glass.frag">
       <Filter>着色器文件</Filter>
     </None>
-    <None Include="shaders\liquid_glass_enhanced.frag">
+    <None Include="shaders\sdf_generator.frag">
+      <Filter>着色器文件</Filter>
+    </None>
+    <None Include="shaders\sdf_generator.vert">
       <Filter>着色器文件</Filter>
     </None>
   </ItemGroup>

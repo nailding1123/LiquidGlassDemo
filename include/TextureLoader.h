@@ -2,22 +2,23 @@
 
 #include <GL/glew.h>
 #include <string>
-#include <vector>
 
+/**
+ * @brief 纹理加载器类
+ * 提供静态方法用于加载和删除OpenGL纹理
+ */
 class TextureLoader {
 public:
+    /**
+     * @brief 从文件加载纹理
+     * @param path 纹理文件路径
+     * @return 返回加载的纹理ID，失败返回0
+     */
     static GLuint loadTexture(const std::string& path);
-    static GLuint createBackgroundTexture(int width, int height);
-    static GLuint createSDFTexture(int width, int height);
-    static void updateTexture(GLuint texture, const unsigned char* data, int width, int height);
-    static void bindTexture(GLuint texture, GLuint slot = 0);
+    
+    /**
+     * @brief 删除纹理
+     * @param texture 要删除的纹理ID
+     */
     static void deleteTexture(GLuint texture);
-    
-    // Background generation utilities
-    static std::vector<unsigned char> generateGradientBackground(int width, int height);
-    static std::vector<unsigned char> generateCheckerboardBackground(int width, int height);
-    static std::vector<unsigned char> generateSDFMap(int width, int height, float radius);
-    
-private:
-    static void checkError(const std::string& operation);
 };

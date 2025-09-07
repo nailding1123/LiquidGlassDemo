@@ -1,140 +1,146 @@
 #include <iostream>
+#include <vector>
+#include <string>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #include "LiquidGlass.h"
+#include "BackgroundCapture.h"
+#include "SDFGenerator.h"
+#include "BackgroundRenderer.h"
 #include "Camera.h"
 #include "TextureLoader.h"
-#include "BackgroundCapture.h"
 
-// Background texture integration
-// #include "background_setup.h" // Removed - background setup functionality integrated elsewhere
-
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_WIDTH = 1024;
+const unsigned int SCR_HEIGHT = 1536;
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-float lastX = SCR_WIDTH / 2.0f;
-float lastY = SCR_HEIGHT / 2.0f;
-bool firstMouse = true;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 LiquidGlass* liquidGlass;
+BackgroundCapture* backgroundCapture;
+SDFGenerator* sdfGenerator;
+BackgroundRenderer* backgroundRenderer;
+
+std::vector<std::string> backgroundFiles = {
+    "backgrounds/background.png",
+    "backgrounds/background1.png"
+};
+
+size_t currentBackgroundIndex = 0;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
-}
-
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
-{
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
+    if (backgroundRenderer) {
+        backgroundRenderer->SetScreenSize(width, height);
     }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
-
-    lastX = xpos;
-    lastY = ypos;
-
-    camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+void switchBackground()
 {
-    camera.ProcessMouseScroll(yoffset);
+    if (!backgroundRenderer) return;
+    
+    currentBackgroundIndex = (currentBackgroundIndex + 1) % backgroundFiles.size();
+    backgroundRenderer->LoadBackground(backgroundFiles[currentBackgroundIndex]);
+    std::cout << "Switched to background: " << backgroundFiles[currentBackgroundIndex] << std::endl;
 }
+
+float g_ref_height = 20.0f;
+float g_ref_length = 30.0f;
 
 void processInput(GLFWwindow* window)
 {
+    static bool bKeyPressed = false;
+    static bool iKeyPressed = false;
+    static bool kKeyPressed = false;
+    static bool jKeyPressed = false;
+    static bool lKeyPressed = false;
+    
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
+    glm::vec2 glassPos = liquidGlass->GetGlassPosition();
+    float moveSpeed = 0.02f;
 
-    // Control distortion
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        liquidGlass->SetGlassPosition(glassPos + glm::vec2(0.0f, moveSpeed));
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        liquidGlass->SetGlassPosition(glassPos + glm::vec2(0.0f, -moveSpeed));
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        liquidGlass->SetGlassPosition(glassPos + glm::vec2(-moveSpeed, 0.0f));
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        liquidGlass->SetGlassPosition(glassPos + glm::vec2(moveSpeed, 0.0f));
+        
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
+    {
+        if (!bKeyPressed)
+        {
+            switchBackground();
+            bKeyPressed = true;
+        }
+    }
+    else
+    {
+        bKeyPressed = false;
+    }
+    
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
-        float distortion = liquidGlass->GetDistortion() + 0.01f;
-        if (distortion > 1.0f) distortion = 1.0f;
-        liquidGlass->SetDistortion(distortion);
+        if (!iKeyPressed)
+        {
+            g_ref_height += 10.0f;
+            if (g_ref_height > 100.0f) g_ref_height = 100.0f;
+            iKeyPressed = true;
+        }
     }
+    else
+    {
+        iKeyPressed = false;
+    }
+    
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
-        float distortion = liquidGlass->GetDistortion() - 0.01f;
-        if (distortion < 0.0f) distortion = 0.0f;
-        liquidGlass->SetDistortion(distortion);
+        if (!kKeyPressed)
+        {
+            g_ref_height -= 10.0f;
+            if (g_ref_height < 5.0f) g_ref_height = 5.0f;
+            kKeyPressed = true;
+        }
+    }
+    else
+    {
+        kKeyPressed = false;
     }
     
-    // Control edge scatter
-    static float edgeScatter = 0.8f;
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
     {
-        edgeScatter -= 0.01f;
-        if (edgeScatter < 0.0f) edgeScatter = 0.0f;
-        liquidGlass->SetEdgeScatter(edgeScatter);
+        if (!jKeyPressed)
+        {
+            g_ref_length -= 10.0f;
+            if (g_ref_length < 5.0f) g_ref_length = 5.0f;
+            jKeyPressed = true;
+        }
     }
+    else
+    {
+        jKeyPressed = false;
+    }
+    
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
     {
-        edgeScatter += 0.01f;
-        if (edgeScatter > 2.0f) edgeScatter = 2.0f;
-        liquidGlass->SetEdgeScatter(edgeScatter);
+        if (!lKeyPressed)
+        {
+            g_ref_length += 10.0f;
+            if (g_ref_length > 100.0f) g_ref_length = 100.0f;
+            lKeyPressed = true;
+        }
     }
-    
-    // Control blur radius
-    static float blurRadius = 3.0f;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    else
     {
-        blurRadius -= 0.1f;
-        if (blurRadius < 0.1f) blurRadius = 0.1f;
-        liquidGlass->SetBlurRadius(blurRadius);
-    }
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-    {
-        blurRadius += 0.1f;
-        if (blurRadius > 10.0f) blurRadius = 10.0f;
-        liquidGlass->SetBlurRadius(blurRadius);
-    }
-    
-    // Control thickness
-    static float thickness = 0.5f;
-    if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
-    {
-        thickness -= 0.01f;
-        if (thickness < 0.1f) thickness = 0.1f;
-        liquidGlass->SetThickness(thickness);
-    }
-    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
-    {
-        thickness += 0.01f;
-        if (thickness > 2.0f) thickness = 2.0f;
-        liquidGlass->SetThickness(thickness);
-    }
-    
-    // Switch background type
-    static bool bPressed = false;
-    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !bPressed)
-    {
-        // SwitchBackgroundType(); // Background switching not implemented
-        std::cout << "Background switching not available" << std::endl;
-        bPressed = true;
-    }
-    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE)
-    {
-        bPressed = false;
+        lKeyPressed = false;
     }
 }
 
@@ -154,10 +160,6 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if (glewInit() != GLEW_OK)
     {
@@ -169,22 +171,32 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    backgroundRenderer = new BackgroundRenderer();
+    backgroundRenderer->Initialize();
+    backgroundRenderer->LoadBackground("backgrounds/background.png");
+    backgroundRenderer->SetScreenSize(SCR_WIDTH, SCR_HEIGHT);
+
+    backgroundCapture = new BackgroundCapture();
+    backgroundCapture->Initialize(SCR_WIDTH, SCR_HEIGHT);
+
+    sdfGenerator = new SDFGenerator();
+    sdfGenerator->Initialize(SCR_WIDTH, SCR_HEIGHT);
+
     liquidGlass = new LiquidGlass();
     liquidGlass->Initialize();
+    liquidGlass->SetBackgroundCapture(backgroundCapture);
+    liquidGlass->SetSDFGenerator(sdfGenerator);
+    liquidGlass->SetBackgroundRenderer(backgroundRenderer);
+    liquidGlass->SetScreenSize(SCR_WIDTH, SCR_HEIGHT);
+    liquidGlass->SetGlassPosition(glm::vec2(0.0f, 0.0f));
+    liquidGlass->SetGlassSize(glm::vec2(0.6f, 0.4f));
     
-    // 使用英文提示避免中文乱码问题
-    // 使用ASCII兼容的中文提示
     std::cout << "=== Liquid Glass Demo ===" << std::endl;
     std::cout << "Controls:" << std::endl;
-    std::cout << "WASD  : Move camera" << std::endl;
-    std::cout << "Mouse : Look around" << std::endl;
-    std::cout << "Wheel : Zoom" << std::endl;
-    std::cout << "Up/Down  : Distortion" << std::endl;
-    std::cout << "Left/Right : Edge scatter" << std::endl;
-    std::cout << "Q/E   : Blur radius" << std::endl;
-    std::cout << "T/G   : Thickness" << std::endl;
-    std::cout << "B     : Background (not ready)" << std::endl;
+    std::cout << "WASD  : Move liquid glass" << std::endl;
     std::cout << "ESC   : Exit" << std::endl;
+
+    glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -194,14 +206,15 @@ int main()
 
         processInput(window);
 
-        // 清除背景
+        liquidGlass->Update(deltaTime);
+
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
-
-        liquidGlass->Update(deltaTime);
+        
+        backgroundRenderer->Render(projection, view);
+        
         liquidGlass->Render(projection, view);
 
         glfwSwapBuffers(window);
@@ -209,6 +222,9 @@ int main()
     }
 
     delete liquidGlass;
+    delete backgroundCapture;
+    delete sdfGenerator;
+    delete backgroundRenderer;
 
     glfwTerminate();
     return 0;

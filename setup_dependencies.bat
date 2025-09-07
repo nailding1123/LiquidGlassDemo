@@ -111,6 +111,7 @@ echo 2. 选择 Release x64 配置
 echo 3. 按 F7 构建项目
 echo 4. 按 F5 运行程序
 echo.
-echo 如果遇到问题，请参考MANUAL_INSTALL.md
+echo 背景图片：
+echo 将任意图片重命名为 background.png 放入 backgrounds/ 目录
 echo.
 pause

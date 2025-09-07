@@ -6,8 +6,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find packages
 find_package(OpenGL REQUIRED)
-find_package(glfw3 REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(glm CONFIG REQUIRED)
+
+# Link vcpkg targets
+if (TARGET glfw)
+    set(GLFW_TARGET glfw)
+elseif (TARGET glfw3)
+    set(GLFW_TARGET glfw3)
+endif()
+if (NOT TARGET GLEW::GLEW)
+    add_library(GLEW::GLEW ALIAS GLEW::glew)
+endif()
+if (TARGET glm::glm)
+    set(GLM_TARGET glm::glm)
+else()
+    set(GLM_TARGET glm)
+endif()
 
 # Include directories
 include_directories(include)
@@ -16,20 +32,24 @@ include_directories(include)
 set(SOURCES
     src/main.cpp
     src/LiquidGlass.cpp
+    src/BackgroundCapture.cpp
+    src/SDFGenerator.cpp
+    src/BackgroundRenderer.cpp
     src/Camera.cpp
     src/Shader.cpp
     src/TextureLoader.cpp
-    src/BackgroundCapture.cpp
     src/stb_image.cpp
 )
 
 # Header files
 set(HEADERS
     include/LiquidGlass.h
+    include/BackgroundCapture.h
+    include/SDFGenerator.h
+    include/BackgroundRenderer.h
     include/Camera.h
     include/Shader.h
     include/TextureLoader.h
-    include/BackgroundCapture.h
 )
 
 # Create executable
@@ -40,6 +60,7 @@ target_link_libraries(${PROJECT_NAME}
     OpenGL::GL
     glfw
     GLEW::GLEW
+    glm::glm
 )
 
 # Compiler flags
